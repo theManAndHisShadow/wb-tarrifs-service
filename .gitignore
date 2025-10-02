@@ -5,3 +5,6 @@ dist
 
 # пока пусть креды лежат тут, дальше посмотрим
 credentials.json
+
+# some OS files/folders
+.DS_Store
