@@ -2,3 +2,6 @@ node_modules
 .local
 .env
 dist
+
+# пока пусть креды лежат тут, дальше посмотрим
+credentials.json
