@@ -3,7 +3,7 @@ import { convertToHumanDate, getValueFromEnv } from "#utils/common.js";
 
 // N.B: draft code
 export async function pullFreshDataFormWbAPI(endpoint: string) {
-  const API_KEY = getValueFromEnv('DONT_LET_THE_KEY_LEAK_OR_YOU_WILL_FIRED');
+  const API_KEY = getValueFromEnv('API_KEY');
 
   const today = convertToHumanDate({
     timestamp: Date.now(),
