@@ -48,13 +48,16 @@ export default function pullAndPush() {
     // 4 обновить все таблицы чьи айдишки указаны в массиве
     // на самом деле тут не совсем понятно что считать источником истины - есть таблица в постгрес с айдишниками таблиц
     // но сейчас она просто синхронится с реальным источником истины - застрингифайленным массивом айдишников в .env
-    SHEET_IDS.map(async (id) => {
-      await pushToGoogleSheets({
-        sheetName: DEFAULT_SHEET_NAME,
-        spreadsheetId: id,
-        data: sheetData,
-        credentialsPath: CREDENTIALS_PATH
-      });
-    });
+    await Promise.all(
+      SHEET_IDS.map(id =>
+        pushToGoogleSheets({
+          sheetName: DEFAULT_SHEET_NAME,
+          spreadsheetId: id,
+          data: sheetData,
+          credentialsPath: CREDENTIALS_PATH
+        })
+      )
+    );
+
   })();
 }
