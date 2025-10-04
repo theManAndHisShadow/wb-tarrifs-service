@@ -1,43 +1,76 @@
-import 'dotenv/config';
-import { getValueFromEnv } from "#utils/common.js";
-import { saveToSheet } from './core.js';
-import { getFreshDataFormWbAPI } from '#services/WbApiDataPuller/index.js';
+import { google } from 'googleapis';
 
-// N.B: draft code
-const SHEET_ID = getValueFromEnv('SHEET_ID');
-const API_ENDPOINT = "https://common-api.wildberries.ru/api/v1/tariffs/box";
-const DEFAULT_SHEET_NAME = 'stocks_coefs';
-const CREDENTIALS_PATH = getValueFromEnv('GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH');
+interface SaveToSheetOptions {
+  spreadsheetId: string;
+  sheetName: string;
+  data: any[][];
+  credentialsPath: string;
+}
 
-if (!CREDENTIALS_PATH) throw new Error("Set 'GOOGLE_CREDENTIALS_PATH' in .env!");
-
-(async () => {
-  const data = await getFreshDataFormWbAPI(API_ENDPOINT);
-
-  const warehouseList = data.response.data.warehouseList || [];
-
-  if (warehouseList.length === 0) {
-    console.log('No data returned from API');
-    return;
-  }
-
-  const headers = Object.keys(warehouseList[0]);
-  const sheetData = warehouseList.map((row: Record<string, any>) =>
-    headers.map((key) => {
-      const val = row[key];
-      return val === '-' || val === null || val === undefined ? '' : String(val).replace(',', '.');
-    })
-  );
-
-  sheetData.unshift(headers);
-
-  await saveToSheet({
-    sheetName: DEFAULT_SHEET_NAME,
-    spreadsheetId: SHEET_ID,
-    data: sheetData,
-    credentialsPath: CREDENTIALS_PATH
+/**
+ * Saves a 2D array of data to a Google Sheet.
+ * 
+ * - Inserts data starting at cell `A1` of the specified sheet tab.
+ * - Automatically creates the sheet tab if it does not exist.
+ * - Replaces any existing data in the target range.
+ * - Allows specifying custom path to service account JSON credentials.
+ * 
+ * @param {SaveToSheetOptions} options - Configuration options.
+ * @param {string} options.spreadsheetId - The ID of the Google Spreadsheet (from the URL).
+ * @param {string} options.sheetName - The name of the sheet/tab to write to. If it doesn't exist, it will be created.
+ * @param {any[][]} options.data - 2D array of values to write. Each inner array represents a row.
+ * @param {string} [options.credentialsPath='./credentials.json'] - Path to the service account credentials JSON file.
+ * 
+ * @throws {Error} If authentication fails or the spreadsheet ID is invalid.
+ * 
+ * @example
+ * await saveToSheet({
+ *   spreadsheetId: '1aBcD1234EfGhIjKlMnoPqRsTuVwXyZ0123456789',
+ *   sheetName: 'stocks_coefs',
+ *   data: [
+ *     ['boxDeliveryBase', 'geoName'],
+ *     ['46', 'NYC'],
+ *     ['-', 'LA']
+ *   ],
+ *   credentialsPath: './credentials.json'
+ * });
+ */
+export async function saveToSheet({
+  spreadsheetId,
+  sheetName,
+  data,
+  credentialsPath = './credentials.json'
+}: SaveToSheetOptions) {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: credentialsPath,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
 
-  console.log('Data successfully saved to sheet!');
-})();
+  const sheets = google.sheets({ version: 'v4', auth });
 
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheet = meta.data.sheets?.find(s => s.properties?.title === sheetName);
+
+  if (!sheet) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          { addSheet: { properties: { title: sheetName } } }
+        ]
+      }
+    });
+    console.log(`Created new sheet: "${sheetName}"`);
+  }
+
+  const range = `${sheetName}!A1`;
+  
+  const res = await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: 'RAW',
+    requestBody: { values: data }
+  });
+
+  console.log(`Data from WB API synchronized to https://docs.google.com/spreadsheets/d/${spreadsheetId}/`);
+}
