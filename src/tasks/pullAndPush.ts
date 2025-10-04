@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { getValueFromEnv } from "#utils/common.js";
-import { getFreshDataFormWbAPI } from '#services/WbApiDataPuller/index.js';
-import { saveToSheet } from '#services/SheetUpdater/index.js';
+import { pullFreshDataFormWbAPI } from '#services/WbApiDataPuller/index.js';
+import { pushToGoogleSheets } from '#services/SheetUpdater/index.js';
 
 export default function pullAndPush() {
   const SHEET_IDS = JSON.parse(getValueFromEnv('SHEET_IDS')) as string[] ?? [];
@@ -14,7 +14,7 @@ export default function pullAndPush() {
   if (!CREDENTIALS_PATH) throw new Error("Set 'GOOGLE_CREDENTIALS_PATH' in .env!");
 
   (async () => {
-    const data = await getFreshDataFormWbAPI(API_ENDPOINT);
+    const data = await pullFreshDataFormWbAPI(API_ENDPOINT);
 
     const warehouseList = data.response.data.warehouseList || [];
 
@@ -34,7 +34,7 @@ export default function pullAndPush() {
     sheetData.unshift(headers);
 
     SHEET_IDS.map(async (id) => {
-      await saveToSheet({
+      await pushToGoogleSheets({
         sheetName: DEFAULT_SHEET_NAME,
         spreadsheetId: id,
         data: sheetData,

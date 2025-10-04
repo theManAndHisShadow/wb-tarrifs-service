@@ -35,7 +35,7 @@ interface SaveToSheetOptions {
  *   credentialsPath: './credentials.json'
  * });
  */
-export async function saveToSheet({
+export async function pushToGoogleSheets({
   spreadsheetId,
   sheetName,
   data,
@@ -64,7 +64,7 @@ export async function saveToSheet({
   }
 
   const range = `${sheetName}!A1`;
-  
+
   const res = await sheets.spreadsheets.values.update({
     spreadsheetId,
     range,
